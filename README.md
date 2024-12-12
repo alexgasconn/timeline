@@ -37,7 +37,7 @@ This project visualizes Google Timeline data as a heatmap using Python and Foliu
 ## Example
 Here’s an example heatmap generated from anonymized data:
 
-![Example Heatmap](example_heatmap.png)
+![Example Heatmap](heatmap_example.html)
 
 ## How to Export Google Timeline Data
 1. Open **Settings** on your Android phone and navigate to **Location**.
