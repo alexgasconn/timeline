@@ -40,7 +40,7 @@ Here’s an example heatmap generated from anonymized data:
 ![Example Heatmap](heatmap.png)
 
 ## How to Export Google Timeline Data
-1. Open **Settings** on your Android phone and navigate to **Location**.
+1. Open **Settings** on your Android phone, and navigate to **Location**.
 2. Select **Timeline** and choose your Google account.
 3. Export your timeline data as a JSON file.
 
