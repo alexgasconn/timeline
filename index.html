@@ -6,12 +6,24 @@
   <title>Timeline Heatmap Viewer</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
-    #map { height: 100vh; }
-    .file-input { position: absolute; top: 10px; left: 10px; z-index: 9999; background: white; padding: 5px; border-radius: 4px; }
+    #map { height: 100vh; width: 100vw; }
+    .file-input {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      background: white;
+      padding: 8px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      font-family: sans-serif;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <div class="file-input">
+    <label for="jsonUpload">Upload Timeline JSON:</label>
     <input type="file" id="jsonUpload" accept=".json" />
   </div>
   <div id="map"></div>
@@ -25,25 +37,47 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
+    function parseLatLng(degreeStr) {
+      // Example: "41.389° , 2.168°"
+      const match = degreeStr?.match(/([-+]?\d+(\.\d+)?)°\s*,\s*([-+]?\d+(\.\d+)?)°/);
+      if (match) {
+        return [parseFloat(match[1]), parseFloat(match[3])];
+      }
+      return null;
+    }
+
     document.getElementById('jsonUpload').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(evt) {
-        const data = JSON.parse(evt.target.result);
-        const points = [];
+        try {
+          const data = JSON.parse(evt.target.result);
+          const points = [];
 
-        if (data.timelineObjects) {
-          data.timelineObjects.forEach(obj => {
-            if (obj.placeVisit && obj.placeVisit.location) {
-              const lat = obj.placeVisit.location.latitudeE7 / 1e7;
-              const lng = obj.placeVisit.location.longitudeE7 / 1e7;
-              points.push([lat, lng, 0.5]);
-            }
-          });
+          if (data.semanticSegments) {
+            data.semanticSegments.forEach(seg => {
+              const latLngStr = seg?.visit?.topCandidate?.placeLocation?.latLng;
+              const coords = parseLatLng(latLngStr);
+              if (coords) points.push([...coords, 0.5]);
+            });
+          }
+
+          if (points.length > 0) {
+            L.heatLayer(points, {
+              radius: 20,
+              blur: 15,
+              maxZoom: 17,
+              minOpacity: 0.5
+            }).addTo(map);
+            map.setView(points[0], 13);
+          } else {
+            alert("No valid location points found in the uploaded file.");
+          }
+        } catch (err) {
+          alert("Error reading file. Make sure it's a valid JSON export from Google Timeline.");
+          console.error(err);
         }
-
-        L.heatLayer(points, {radius: 20, blur: 15, maxZoom: 17}).addTo(map);
       };
       reader.readAsText(file);
     });
