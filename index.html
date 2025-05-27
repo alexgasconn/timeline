@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timeline Heatmap Viewer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; }
+    .file-input { position: absolute; top: 10px; left: 10px; z-index: 9999; background: white; padding: 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="file-input">
+    <input type="file" id="jsonUpload" accept=".json" />
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script>
+    const map = L.map('map').setView([41.3851, 2.1734], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    document.getElementById('jsonUpload').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const data = JSON.parse(evt.target.result);
+        const points = [];
+
+        if (data.timelineObjects) {
+          data.timelineObjects.forEach(obj => {
+            if (obj.placeVisit && obj.placeVisit.location) {
+              const lat = obj.placeVisit.location.latitudeE7 / 1e7;
+              const lng = obj.placeVisit.location.longitudeE7 / 1e7;
+              points.push([lat, lng, 0.5]);
+            }
+          });
+        }
+
+        L.heatLayer(points, {radius: 20, blur: 15, maxZoom: 17}).addTo(map);
+      };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
