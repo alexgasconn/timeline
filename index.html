@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Timeline Heatmap Viewer</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
-    #map { height: 100vh; width: 100vw; }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+
     .file-input {
       position: absolute;
       top: 10px;
@@ -19,11 +24,24 @@
       font-family: sans-serif;
       font-size: 14px;
     }
+
+    .file-input button,
+    .file-input input {
+      margin-top: 6px;
+    }
+
+    #status {
+      margin: 8px 0 0;
+      max-width: 280px;
+    }
   </style>
 </head>
+
 <body>
   <div class="file-input">
-    <label for="jsonUpload">Upload Timeline JSON:</label>
+    <button id="demoButton" type="button">Load demo (timeline.json)</button>
+    <p id="status" role="status" aria-live="polite">Choose the demo data or upload a Timeline JSON file.</p>
+    <label for="jsonUpload">Upload your own Timeline JSON:</label>
     <input type="file" id="jsonUpload" accept=".json" />
   </div>
   <div id="map"></div>
@@ -46,41 +64,65 @@
       return null;
     }
 
-    document.getElementById('jsonUpload').addEventListener('change', function(e) {
-      const file = e.target.files[0];
+    const status = document.getElementById('status');
+    let heatLayer = null;
+
+    function renderTimeline(data) {
+      const points = [];
+      const segments = Array.isArray(data?.semanticSegments) ? data.semanticSegments : [];
+
+      segments.forEach(segment => {
+        const latLngStr = segment?.visit?.topCandidate?.placeLocation?.latLng;
+        const coords = parseLatLng(latLngStr);
+        if (coords) points.push([...coords, 0.5]);
+      });
+
+      if (points.length === 0) {
+        throw new Error('No valid location points found in this Timeline JSON.');
+      }
+
+      if (heatLayer) map.removeLayer(heatLayer);
+      heatLayer = L.heatLayer(points, {
+        radius: 20,
+        blur: 15,
+        maxZoom: 17,
+        minOpacity: 0.5
+      }).addTo(map);
+      map.fitBounds(L.latLngBounds(points), { maxZoom: 13 });
+      status.textContent = `Loaded ${points.length.toLocaleString()} location points.`;
+    }
+
+    document.getElementById('demoButton').addEventListener('click', async () => {
+      status.textContent = 'Loading demo data...';
+      try {
+        const response = await fetch('./timeline.json');
+        if (!response.ok) throw new Error(`Could not load timeline.json (${response.status}).`);
+        renderTimeline(await response.json());
+      } catch (error) {
+        status.textContent = `${error.message} Run this page from a local web server to load the demo.`;
+        console.error(error);
+      }
+    });
+
+    document.getElementById('jsonUpload').addEventListener('change', event => {
+      const file = event.target.files[0];
       if (!file) return;
+      status.textContent = 'Reading Timeline JSON...';
       const reader = new FileReader();
-      reader.onload = function(evt) {
+      reader.onload = () => {
         try {
-          const data = JSON.parse(evt.target.result);
-          const points = [];
-
-          if (data.semanticSegments) {
-            data.semanticSegments.forEach(seg => {
-              const latLngStr = seg?.visit?.topCandidate?.placeLocation?.latLng;
-              const coords = parseLatLng(latLngStr);
-              if (coords) points.push([...coords, 0.5]);
-            });
-          }
-
-          if (points.length > 0) {
-            L.heatLayer(points, {
-              radius: 20,
-              blur: 15,
-              maxZoom: 17,
-              minOpacity: 0.5
-            }).addTo(map);
-            map.setView(points[0], 13);
-          } else {
-            alert("No valid location points found in the uploaded file.");
-          }
-        } catch (err) {
-          alert("Error reading file. Make sure it's a valid JSON export from Google Timeline.");
-          console.error(err);
+          renderTimeline(JSON.parse(reader.result));
+        } catch (error) {
+          status.textContent = error.message || 'Could not read this Timeline JSON file.';
+          console.error(error);
         }
+      };
+      reader.onerror = () => {
+        status.textContent = 'Could not read the selected file.';
       };
       reader.readAsText(file);
     });
   </script>
 </body>
+
 </html>
