@@ -4,12 +4,13 @@ import folium
 from folium.plugins import HeatMap
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from geopy.distance import geodesic
 
 app = Flask(__name__)
 
-# File path to the JSON
-file_path = r"C:\\Users\\usuario\\OneDrive\\Escritorio\\VS files\\timeline\\timeline.json"
+# File path to the JSON next to this script
+file_path = Path(__file__).with_name("timeline.json")
 
 # Helper function to extract latitude and longitude from the 'latLng' field
 def parse_lat_lng(lat_lng_str):
